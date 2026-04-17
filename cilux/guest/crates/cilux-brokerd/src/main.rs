@@ -137,6 +137,16 @@ fn dispatch_request_inner(state: &ServerState, request: BrokerRequest) -> Result
         BrokerRequest::TraceConfigure(params) => {
             BrokerResult::TraceConfigure(state.kernel.trace_configure(params.trace_mask)?)
         }
+        BrokerRequest::TraceStatus(_) => BrokerResult::TraceStatus(state.kernel.trace_status()?),
+        BrokerRequest::TraceEnable(params) => {
+            BrokerResult::TraceEnable(state.kernel.trace_enable(&params.categories)?)
+        }
+        BrokerRequest::TraceDisable(params) => {
+            BrokerResult::TraceDisable(state.kernel.trace_disable(&params.categories)?)
+        }
+        BrokerRequest::TraceResetDefault(_) => {
+            BrokerResult::TraceResetDefault(state.kernel.trace_reset_default()?)
+        }
         BrokerRequest::BufferClear(_) => BrokerResult::BufferClear(state.kernel.buffer_clear()?),
         BrokerRequest::Health(_) => {
             BrokerResult::Health(state.kernel.health(std::process::id(), &state.socket_path))
@@ -152,6 +162,10 @@ fn request_method(request: &BrokerRequest) -> &'static str {
         BrokerRequest::KernelSnapshot(_) => "kernel_snapshot",
         BrokerRequest::KernelEventsTail(_) => "kernel_events_tail",
         BrokerRequest::TraceConfigure(_) => "trace_configure",
+        BrokerRequest::TraceStatus(_) => "trace_status",
+        BrokerRequest::TraceEnable(_) => "trace_enable",
+        BrokerRequest::TraceDisable(_) => "trace_disable",
+        BrokerRequest::TraceResetDefault(_) => "trace_reset_default",
         BrokerRequest::BufferClear(_) => "buffer_clear",
         BrokerRequest::Health(_) => "health",
         BrokerRequest::SystemRead(_) => "system_read",

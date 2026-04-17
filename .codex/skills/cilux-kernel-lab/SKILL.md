@@ -15,6 +15,10 @@ Use this skill inside the Cilux guest when the task is to inspect or experiment 
   - `cilux_kernel_snapshot`
   - `cilux_events_tail`
   - `cilux_trace_configure`
+  - `cilux_trace_status`
+  - `cilux_trace_enable`
+  - `cilux_trace_disable`
+  - `cilux_trace_reset_default`
   - `cilux_buffer_clear`
   - `cilux_system_read`
 - Cilux MCP resources:
@@ -35,27 +39,36 @@ Use this skill inside the Cilux guest when the task is to inspect or experiment 
 2. Inspect Cilux state
 
 - Use `cilux_kernel_snapshot` for the current `trace_mask`, counters, and capabilities.
+- Use `cilux_trace_status` when you want the current enabled/supported trace categories without parsing the raw snapshot state.
 - Use `cilux_events_tail` with an explicit limit such as `8`, `16`, or `32`.
 
 3. Inspect broader kernel state
 
 - Use `cilux_system_read` with one of:
   - `dmesg`
+  - `proc_cmdline`
   - `proc_modules`
+  - `proc_version`
   - `proc_meminfo`
   - `proc_loadavg`
   - `proc_uptime`
   - `proc_cpuinfo`
   - `proc_interrupts`
+  - `proc_softirqs`
   - `proc_vmstat`
   - `proc_buddyinfo`
   - `proc_zoneinfo`
+  - `proc_iomem`
+  - `proc_ioports`
+  - `proc_slabinfo`
 
 4. Mutate carefully
 
 - `cilux_trace_configure` changes the active trace mask.
+- `cilux_trace_enable` and `cilux_trace_disable` change named trace categories without editing the raw mask directly.
+- `cilux_trace_reset_default` restores the default supported trace categories.
 - `cilux_buffer_clear` clears the event ring.
-- When mutating, state the intended effect before the call and verify it afterward with `cilux_kernel_snapshot` or `cilux_events_tail`.
+- When mutating, state the intended effect before the call and verify it afterward with `cilux_trace_status`, `cilux_kernel_snapshot`, or `cilux_events_tail`.
 
 5. Prefer structured reads before ad-hoc shell
 

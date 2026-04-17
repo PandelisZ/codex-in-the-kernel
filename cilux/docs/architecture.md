@@ -15,9 +15,9 @@
 - `cilux-mcp`
   - unprivileged stdio MCP server launched by Codex on demand
   - forwards tool calls and resource reads to `cilux-brokerd`
-  - exposes Cilux snapshot/event/trace controls plus curated kernel-adjacent
-    guest reads such as `dmesg`, `/proc/modules`, `/proc/vmstat`, and
-    `/proc/zoneinfo`
+  - exposes Cilux snapshot/event/trace controls, named trace enable/disable
+    helpers, and curated kernel-adjacent guest reads such as `dmesg`,
+    `/proc/softirqs`, `/proc/vmstat`, and `/proc/slabinfo`
 - `codex app-server`
   - unprivileged websocket server on guest port `8765`
   - authenticated with a capability token file
@@ -37,4 +37,5 @@
 - No arbitrary shell is exposed through the broker.
 - `system_read` only permits curated selectors such as `dmesg` and selected
   `/proc` snapshots.
-- Kernel mutation is limited to the Cilux trace mask and event-buffer clear.
+- Kernel mutation is limited to trace-control operations over the Cilux trace
+  mask plus event-buffer clear.

@@ -2,7 +2,8 @@ use crate::netlink;
 use anyhow::{bail, Context, Result};
 use cilux_common::{
     HealthReport, KernelEventsTail, KernelSnapshot, StatusResult, SystemReadResult,
-    SystemReadSelector, TraceConfigureResult, DEFAULT_APP_SERVER_PORT, DEFAULT_DEBUGFS_ROOT,
+    SystemReadSelector, TraceCategory, TraceConfigureResult, TraceStatusResult,
+    DEFAULT_APP_SERVER_PORT, DEFAULT_DEBUGFS_ROOT, TRACE_DEFAULT_MASK,
 };
 use serde_json::Value;
 use std::fs;
@@ -68,6 +69,27 @@ impl KernelFacade {
         })
     }
 
+    pub fn trace_status(&self) -> Result<TraceStatusResult> {
+        netlink::get_state().map(trace_status_from_kernel_state)
+    }
+
+    pub fn trace_enable(&self, categories: &[TraceCategory]) -> Result<TraceStatusResult> {
+        let state = netlink::get_state()?;
+        let trace_mask = trace_enable_mask(state.trace_mask, state.supported_mask, categories)?;
+        self.trace_update(trace_mask)
+    }
+
+    pub fn trace_disable(&self, categories: &[TraceCategory]) -> Result<TraceStatusResult> {
+        let state = netlink::get_state()?;
+        let trace_mask = trace_disable_mask(state.trace_mask, state.supported_mask, categories)?;
+        self.trace_update(trace_mask)
+    }
+
+    pub fn trace_reset_default(&self) -> Result<TraceStatusResult> {
+        let state = netlink::get_state()?;
+        self.trace_update(trace_reset_default_mask(state.supported_mask))
+    }
+
     pub fn buffer_clear(&self) -> Result<StatusResult> {
         let remaining = netlink::clear_events()?;
         Ok(StatusResult { ok: remaining == 0 })
@@ -89,24 +111,97 @@ impl KernelFacade {
     }
 
     pub fn system_read(&self, selector: SystemReadSelector) -> Result<SystemReadResult> {
-        let text = match selector {
-            SystemReadSelector::Dmesg => run_read_command("dmesg", &[])?,
-            SystemReadSelector::ProcModules => read_proc_file("/proc/modules")?,
-            SystemReadSelector::ProcMeminfo => read_proc_file("/proc/meminfo")?,
-            SystemReadSelector::ProcLoadavg => read_proc_file("/proc/loadavg")?,
-            SystemReadSelector::ProcUptime => read_proc_file("/proc/uptime")?,
-            SystemReadSelector::ProcCpuinfo => read_proc_file("/proc/cpuinfo")?,
-            SystemReadSelector::ProcInterrupts => read_proc_file("/proc/interrupts")?,
-            SystemReadSelector::ProcVmstat => read_proc_file("/proc/vmstat")?,
-            SystemReadSelector::ProcBuddyinfo => read_proc_file("/proc/buddyinfo")?,
-            SystemReadSelector::ProcZoneinfo => read_proc_file("/proc/zoneinfo")?,
+        let text = match system_read_path(selector) {
+            Some(path) => read_text_file(path)?,
+            None => run_read_command("dmesg", &[])?,
         };
 
         Ok(SystemReadResult { selector, text })
     }
+
+    fn trace_update(&self, trace_mask: u32) -> Result<TraceStatusResult> {
+        netlink::set_trace_mask(trace_mask)?;
+        self.trace_status()
+    }
 }
 
-fn read_proc_file(path: &str) -> Result<String> {
+fn trace_status_from_kernel_state(state: netlink::KernelState) -> TraceStatusResult {
+    TraceStatusResult::new(
+        state.trace_mask,
+        state.supported_mask,
+        state.drop_count,
+        state.event_count,
+        state.ring_capacity,
+    )
+}
+
+fn trace_enable_mask(
+    current_mask: u32,
+    supported_mask: u32,
+    categories: &[TraceCategory],
+) -> Result<u32> {
+    let requested_mask = trace_categories_mask(categories)?;
+    ensure_supported_categories(supported_mask, requested_mask)?;
+    Ok(current_mask | requested_mask)
+}
+
+fn trace_disable_mask(
+    current_mask: u32,
+    supported_mask: u32,
+    categories: &[TraceCategory],
+) -> Result<u32> {
+    let requested_mask = trace_categories_mask(categories)?;
+    ensure_supported_categories(supported_mask, requested_mask)?;
+    Ok(current_mask & !requested_mask)
+}
+
+fn trace_reset_default_mask(supported_mask: u32) -> u32 {
+    TRACE_DEFAULT_MASK & supported_mask
+}
+
+fn trace_categories_mask(categories: &[TraceCategory]) -> Result<u32> {
+    if categories.is_empty() {
+        bail!("trace categories must not be empty");
+    }
+    Ok(TraceCategory::mask_for(categories.iter().copied()))
+}
+
+fn ensure_supported_categories(supported_mask: u32, requested_mask: u32) -> Result<()> {
+    let unsupported_mask = requested_mask & !supported_mask;
+    if unsupported_mask == 0 {
+        return Ok(());
+    }
+
+    let unsupported_categories = TraceCategory::from_mask(unsupported_mask)
+        .into_iter()
+        .map(|category| category.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    bail!("unsupported trace categories requested: {unsupported_categories}");
+}
+
+fn system_read_path(selector: SystemReadSelector) -> Option<&'static str> {
+    match selector {
+        SystemReadSelector::Dmesg => None,
+        SystemReadSelector::ProcCmdline => Some("/proc/cmdline"),
+        SystemReadSelector::ProcModules => Some("/proc/modules"),
+        SystemReadSelector::ProcVersion => Some("/proc/version"),
+        SystemReadSelector::ProcMeminfo => Some("/proc/meminfo"),
+        SystemReadSelector::ProcLoadavg => Some("/proc/loadavg"),
+        SystemReadSelector::ProcUptime => Some("/proc/uptime"),
+        SystemReadSelector::ProcCpuinfo => Some("/proc/cpuinfo"),
+        SystemReadSelector::ProcInterrupts => Some("/proc/interrupts"),
+        SystemReadSelector::ProcSoftirqs => Some("/proc/softirqs"),
+        SystemReadSelector::ProcVmstat => Some("/proc/vmstat"),
+        SystemReadSelector::ProcBuddyinfo => Some("/proc/buddyinfo"),
+        SystemReadSelector::ProcZoneinfo => Some("/proc/zoneinfo"),
+        SystemReadSelector::ProcIomem => Some("/proc/iomem"),
+        SystemReadSelector::ProcIoports => Some("/proc/ioports"),
+        SystemReadSelector::ProcSlabinfo => Some("/proc/slabinfo"),
+    }
+}
+
+fn read_text_file(path: &str) -> Result<String> {
     fs::read_to_string(path).with_context(|| format!("read {path}"))
 }
 
@@ -132,5 +227,99 @@ fn run_read_command(command: &str, args: &[&str]) -> Result<String> {
 impl Default for KernelFacade {
     fn default() -> Self {
         Self::new(DEFAULT_DEBUGFS_ROOT, "/var/log/cilux-broker.log")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cilux_common::{TRACE_EXEC, TRACE_EXIT, TRACE_MODULE, TRACE_OOM};
+
+    #[test]
+    fn trace_enable_disable_and_reset_default_mask_math() {
+        assert_eq!(
+            trace_enable_mask(
+                TRACE_EXEC,
+                TRACE_DEFAULT_MASK,
+                &[TraceCategory::Module, TraceCategory::SchedProcessExec],
+            )
+            .expect("enable should succeed"),
+            TRACE_EXEC | TRACE_MODULE
+        );
+        assert_eq!(
+            trace_disable_mask(
+                TRACE_DEFAULT_MASK,
+                TRACE_DEFAULT_MASK,
+                &[TraceCategory::SchedProcessExit, TraceCategory::MarkVictim],
+            )
+            .expect("disable should succeed"),
+            TRACE_EXEC | TRACE_MODULE
+        );
+        assert_eq!(
+            trace_reset_default_mask(TRACE_EXEC | TRACE_OOM),
+            TRACE_EXEC | TRACE_OOM
+        );
+    }
+
+    #[test]
+    fn trace_categories_must_not_be_empty() {
+        let error = trace_categories_mask(&[]).expect_err("empty categories should fail");
+        assert_eq!(error.to_string(), "trace categories must not be empty");
+    }
+
+    #[test]
+    fn unsupported_trace_categories_fail() {
+        let error = trace_enable_mask(
+            TRACE_EXEC,
+            TRACE_EXEC | TRACE_EXIT,
+            &[TraceCategory::Module],
+        )
+        .expect_err("unsupported categories should fail");
+        assert_eq!(
+            error.to_string(),
+            "unsupported trace categories requested: module"
+        );
+    }
+
+    #[test]
+    fn system_read_paths_cover_new_selectors() {
+        let paths = [
+            (
+                SystemReadSelector::ProcCmdline,
+                system_read_path(SystemReadSelector::ProcCmdline),
+            ),
+            (
+                SystemReadSelector::ProcVersion,
+                system_read_path(SystemReadSelector::ProcVersion),
+            ),
+            (
+                SystemReadSelector::ProcSoftirqs,
+                system_read_path(SystemReadSelector::ProcSoftirqs),
+            ),
+            (
+                SystemReadSelector::ProcIomem,
+                system_read_path(SystemReadSelector::ProcIomem),
+            ),
+            (
+                SystemReadSelector::ProcIoports,
+                system_read_path(SystemReadSelector::ProcIoports),
+            ),
+            (
+                SystemReadSelector::ProcSlabinfo,
+                system_read_path(SystemReadSelector::ProcSlabinfo),
+            ),
+        ];
+
+        assert_eq!(
+            paths,
+            [
+                (SystemReadSelector::ProcCmdline, Some("/proc/cmdline")),
+                (SystemReadSelector::ProcVersion, Some("/proc/version")),
+                (SystemReadSelector::ProcSoftirqs, Some("/proc/softirqs")),
+                (SystemReadSelector::ProcIomem, Some("/proc/iomem")),
+                (SystemReadSelector::ProcIoports, Some("/proc/ioports")),
+                (SystemReadSelector::ProcSlabinfo, Some("/proc/slabinfo")),
+            ]
+        );
     }
 }

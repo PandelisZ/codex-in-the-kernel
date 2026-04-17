@@ -1,6 +1,6 @@
 #[cfg(target_os = "linux")]
 mod imp {
-    use anyhow::{Context, Result, bail};
+    use anyhow::{bail, Context, Result};
     use cilux_common::FAMILY_VERSION;
     use std::io;
     use std::mem::size_of;
@@ -16,7 +16,6 @@ mod imp {
     const GENL_CTRL_VERSION: u8 = 2;
 
     const CILUX_CMD_PING: u8 = 1;
-    const CILUX_CMD_GET_CAPS: u8 = 2;
     const CILUX_CMD_GET_STATE: u8 = 3;
     const CILUX_CMD_SET_TRACE_MASK: u8 = 4;
     const CILUX_CMD_CLEAR_EVENTS: u8 = 5;
@@ -65,12 +64,6 @@ mod imp {
     }
 
     #[derive(Debug, Clone, Copy)]
-    pub struct KernelCaps {
-        pub supported_mask: u32,
-        pub ring_capacity: u32,
-    }
-
-    #[derive(Debug, Clone, Copy)]
     pub struct KernelState {
         pub trace_mask: u32,
         pub supported_mask: u32,
@@ -87,17 +80,6 @@ mod imp {
             bail!("unexpected ping status {status}");
         }
         Ok(())
-    }
-
-    pub fn get_caps() -> Result<KernelCaps> {
-        let family_id = resolve_family_id()?;
-        let attrs = transact(family_id, CILUX_CMD_GET_CAPS, FAMILY_VERSION, &[])?;
-        Ok(KernelCaps {
-            supported_mask: parse_u32_attr(&attrs, CILUX_A_SUPPORTED_MASK)
-                .context("supported mask missing")?,
-            ring_capacity: parse_u32_attr(&attrs, CILUX_A_RING_CAPACITY)
-                .context("ring capacity missing")?,
-        })
     }
 
     pub fn get_state() -> Result<KernelState> {
@@ -327,13 +309,7 @@ mod imp {
 
 #[cfg(not(target_os = "linux"))]
 mod imp {
-    use anyhow::{Result, bail};
-
-    #[derive(Debug, Clone, Copy)]
-    pub struct KernelCaps {
-        pub supported_mask: u32,
-        pub ring_capacity: u32,
-    }
+    use anyhow::{bail, Result};
 
     #[derive(Debug, Clone, Copy)]
     pub struct KernelState {
@@ -349,10 +325,6 @@ mod imp {
     }
 
     pub fn ping() -> Result<()> {
-        unsupported()
-    }
-
-    pub fn get_caps() -> Result<KernelCaps> {
         unsupported()
     }
 

@@ -142,21 +142,31 @@ The current Cilux MCP server exposes:
 - `cilux_kernel_snapshot`
 - `cilux_events_tail`
 - `cilux_trace_configure`
+- `cilux_trace_status`
+- `cilux_trace_enable`
+- `cilux_trace_disable`
+- `cilux_trace_reset_default`
 - `cilux_buffer_clear`
 - `cilux_system_read`
 
 ### Curated `cilux_system_read` selectors
 
 - `dmesg`
+- `proc_cmdline`
 - `proc_modules`
+- `proc_version`
 - `proc_meminfo`
 - `proc_loadavg`
 - `proc_uptime`
 - `proc_cpuinfo`
 - `proc_interrupts`
+- `proc_softirqs`
 - `proc_vmstat`
 - `proc_buddyinfo`
 - `proc_zoneinfo`
+- `proc_iomem`
+- `proc_ioports`
+- `proc_slabinfo`
 
 ### MCP resources
 
@@ -165,15 +175,21 @@ The current Cilux MCP server exposes:
 - `cilux://events`
 - `cilux://health`
 - `cilux://system/dmesg`
+- `cilux://system/proc_cmdline`
 - `cilux://system/proc_modules`
+- `cilux://system/proc_version`
 - `cilux://system/proc_meminfo`
 - `cilux://system/proc_loadavg`
 - `cilux://system/proc_uptime`
 - `cilux://system/proc_cpuinfo`
 - `cilux://system/proc_interrupts`
+- `cilux://system/proc_softirqs`
 - `cilux://system/proc_vmstat`
 - `cilux://system/proc_buddyinfo`
 - `cilux://system/proc_zoneinfo`
+- `cilux://system/proc_iomem`
+- `cilux://system/proc_ioports`
+- `cilux://system/proc_slabinfo`
 
 ### MCP resource templates
 
@@ -189,9 +205,10 @@ The repo includes a guest-facing Codex skill at:
 This skill tells the in-guest agent how to approach the kernel/broker surface:
 
 - start with `cilux_health`
-- inspect state with `cilux_kernel_snapshot`
+- inspect trace state with `cilux_trace_status` or `cilux_kernel_snapshot`
 - use `cilux_system_read` for broader kernel-adjacent context
-- treat `cilux_trace_configure` and `cilux_buffer_clear` as explicit writes
+- treat `cilux_trace_configure`, `cilux_trace_enable`, `cilux_trace_disable`,
+  `cilux_trace_reset_default`, and `cilux_buffer_clear` as explicit writes
 
 ## Auth Model
 
@@ -401,6 +418,9 @@ The write surface is still intentionally small, but it is now operational:
 
 - `cilux_buffer_clear`
 - `cilux_trace_configure`
+- `cilux_trace_enable`
+- `cilux_trace_disable`
+- `cilux_trace_reset_default`
 
 In live experiments:
 
@@ -483,7 +503,7 @@ kernel-side target.
 
 Right now the broker can mutate:
 
-- the trace mask
+- trace-control state derived from the trace mask
 - the event ring buffer
 
 That is by design, but if the research goal shifts toward deeper kernel control,
