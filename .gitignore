@@ -4,3 +4,4 @@ dist/
 node_modules/
 .playwright-cli/
 output/
+__pycache__/

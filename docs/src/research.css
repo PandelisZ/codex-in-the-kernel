@@ -1,0 +1,154 @@
+.research-main {
+  gap: 36px;
+}
+
+.research-nav {
+  position: sticky;
+  top: 24px;
+}
+
+.research-summary-card {
+  display: grid;
+  gap: 16px;
+}
+
+.research-summary-card .hero-panel-grid {
+  margin-top: 0;
+}
+
+.research-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.status-chip--validated {
+  background: rgba(25, 90, 103, 0.12);
+  border-color: rgba(25, 90, 103, 0.2);
+  color: var(--teal);
+}
+
+.status-chip--active {
+  background: rgba(155, 75, 38, 0.12);
+  border-color: rgba(155, 75, 38, 0.18);
+  color: var(--accent);
+}
+
+.status-chip--blocked {
+  background: rgba(84, 87, 99, 0.12);
+  border-color: rgba(84, 87, 99, 0.18);
+  color: var(--muted);
+}
+
+.status-chip--planned {
+  background: rgba(232, 208, 160, 0.28);
+  border-color: rgba(155, 75, 38, 0.18);
+  color: var(--accent-strong);
+}
+
+.track-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.track-card {
+  display: grid;
+  gap: 18px;
+}
+
+.track-card header,
+.entry-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.track-card h3,
+.entry-card h3 {
+  margin: 0;
+}
+
+.track-card p,
+.entry-card p {
+  margin: 0;
+}
+
+.research-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.entry-card {
+  display: grid;
+  gap: 18px;
+}
+
+.entry-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.detail-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-panel {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 250, 242, 0.74);
+}
+
+.detail-panel h4 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.detail-panel ul {
+  margin-top: 12px;
+}
+
+.workflow-grid {
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+.source-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1120px) {
+  .track-grid,
+  .detail-grid,
+  .detail-grid--two,
+  .workflow-grid,
+  .source-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .research-nav {
+    position: static;
+  }
+}

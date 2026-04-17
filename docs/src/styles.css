@@ -440,45 +440,6 @@ figcaption {
   border-top: 1px solid var(--line);
 }
 
-.architecture-figure {
-  margin: 0 0 24px;
-  padding: 18px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  background: rgba(255, 249, 239, 0.82);
-  box-shadow: var(--shadow);
-}
-
-.architecture-figure svg {
-  width: 100%;
-  height: auto;
-}
-
-.svg-title {
-  font-family: var(--serif);
-  font-size: 28px;
-  fill: #161920;
-}
-
-.svg-label {
-  font-family: var(--sans);
-  font-size: 21px;
-  font-weight: 700;
-  fill: #161920;
-}
-
-.svg-body {
-  font-family: var(--sans);
-  font-size: 20px;
-  fill: #545763;
-}
-
-.svg-small {
-  font-family: var(--sans);
-  font-size: 16px;
-  fill: #545763;
-}
-
 figcaption {
   margin-top: 16px;
 }

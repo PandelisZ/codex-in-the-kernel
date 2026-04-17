@@ -1,4 +1,7 @@
+import "./architecture.css";
 import "./styles.css";
+
+import { renderArchitectureFigure } from "./architecture";
 
 import {
   controlPlane,
@@ -40,80 +43,6 @@ const renderCardGrid = (
 const renderList = (items: string[], className = "list"): string =>
   `<ul class="${className}">${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
 
-const renderArchitectureFigure = (): string => `
-  <figure class="architecture-figure reveal">
-    <svg viewBox="0 0 1080 620" role="img" aria-labelledby="arch-title arch-desc">
-      <title id="arch-title">Codex-in-the-kernel architecture diagram</title>
-      <desc id="arch-desc">
-        The host boots a disposable guest VM. Inside the guest, Codex can inspect through shell access
-        and through a structured MCP path that reaches a broker and then the kernel module.
-      </desc>
-      <defs>
-        <linearGradient id="surface" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#fff8f0" />
-          <stop offset="100%" stop-color="#f0e0cc" />
-        </linearGradient>
-        <linearGradient id="guest" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#fef4df" />
-          <stop offset="100%" stop-color="#f7d7b4" />
-        </linearGradient>
-        <linearGradient id="kernel" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#d4ebe1" />
-          <stop offset="100%" stop-color="#9bcab9" />
-        </linearGradient>
-        <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
-          <path d="M0,0 L12,6 L0,12 z" fill="#195a67" />
-        </marker>
-      </defs>
-
-      <rect x="24" y="32" width="1032" height="556" rx="28" fill="url(#surface)" stroke="#ceb28f" />
-
-      <rect x="64" y="76" width="952" height="148" rx="24" fill="#f6ecdf" stroke="#d4b894" />
-      <text x="96" y="118" class="svg-title">Host machine</text>
-      <text x="96" y="156" class="svg-body">QEMU/HVF boots the guest, forwards port 8765,</text>
-      <text x="96" y="184" class="svg-body">and exports the repo over virtio 9p.</text>
-      <rect x="708" y="112" width="252" height="72" rx="20" fill="#ffffff" stroke="#b99a71" />
-      <text x="734" y="146" class="svg-label">/workspace-ro over 9p</text>
-      <text x="734" y="170" class="svg-small">overlay scratch creates writable /workspace</text>
-
-      <rect x="64" y="258" width="952" height="288" rx="28" fill="url(#guest)" stroke="#d09862" />
-      <text x="96" y="304" class="svg-title">Guest VM</text>
-      <text x="96" y="338" class="svg-body">Codex stays in userspace and sees two complementary access paths.</text>
-
-      <rect x="110" y="372" width="244" height="106" rx="24" fill="#fffaf4" stroke="#bf8b55" />
-      <text x="138" y="408" class="svg-label">Root shell access</text>
-      <text x="138" y="432" class="svg-small">/proc, /sys, debugfs, dmesg</text>
-      <text x="138" y="456" class="svg-small">normal systems investigation</text>
-
-      <rect x="420" y="372" width="244" height="106" rx="24" fill="#fffaf4" stroke="#bf8b55" />
-      <text x="448" y="408" class="svg-label">cilux-mcp</text>
-      <text x="448" y="432" class="svg-small">structured tools and resources</text>
-      <text x="448" y="456" class="svg-small">health, snapshot, events, reads, writes</text>
-
-      <rect x="730" y="372" width="232" height="106" rx="24" fill="#fffaf4" stroke="#bf8b55" />
-      <text x="758" y="408" class="svg-label">cilux-brokerd</text>
-      <text x="758" y="432" class="svg-small">root daemon with audit trail</text>
-      <text x="758" y="456" class="svg-small">debugfs + netlink boundary</text>
-
-      <rect x="420" y="494" width="542" height="74" rx="20" fill="url(#kernel)" stroke="#4f8f7c" />
-      <text x="448" y="528" class="svg-label">Kernel target</text>
-      <text x="448" y="552" class="svg-small">rust_cilux.ko, debugfs state, Generic Netlink controls, bounded event ring</text>
-
-      <path d="M354 425 H400" stroke="#195a67" stroke-width="4" marker-end="url(#arrow)" />
-      <path d="M664 425 H710" stroke="#195a67" stroke-width="4" marker-end="url(#arrow)" />
-      <path d="M846 478 V496" stroke="#195a67" stroke-width="4" marker-end="url(#arrow)" />
-      <path d="M542 478 V496" stroke="#195a67" stroke-width="4" marker-end="url(#arrow)" />
-
-      <text x="370" y="398" class="svg-small">same Codex thread</text>
-      <text x="688" y="398" class="svg-small">structured broker path</text>
-    </svg>
-    <figcaption>
-      The point of Cilux is not to move Codex into the kernel. It is to give a userspace agent a clearer,
-      more auditable way to ask the kernel questions and perform a few carefully chosen control operations.
-    </figcaption>
-  </figure>
-`;
-
 app.innerHTML = `
   <div class="page-shell">
     <div class="ambient ambient-top"></div>
@@ -135,6 +64,7 @@ app.innerHTML = `
           </p>
           <div class="hero-actions">
             <a class="button button-primary" href="#architecture">Read the architecture</a>
+            <a class="button button-secondary" href="./research/">View research log</a>
             <a class="button button-secondary" href="${repoUrl}">Open the repo</a>
           </div>
         </div>

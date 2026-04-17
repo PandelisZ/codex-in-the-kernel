@@ -21,6 +21,12 @@ If you already cloned without submodules:
 git submodule update --init --recursive
 ```
 
+To bootstrap the repo after cloning:
+
+```sh
+make setup
+```
+
 ## Repository Shape
 
 - `cilux/`
@@ -302,6 +308,54 @@ Stop the VM with:
 ```sh
 cilux/vm/scripts/stop.sh
 ```
+
+## Interactive Access
+
+Once the VM is up and `wait-ready.sh` has succeeded, you can attach directly to
+the running guest Codex instance with the TUI client at:
+
+- `cilux/vm/scripts/tui-client.py`
+
+This client talks to the live guest `codex app-server` over websocket using the
+guest capability token written during initramfs assembly. By default it uses:
+
+- websocket URL: `ws://127.0.0.1:8765`
+- token file: `cilux/artifacts/rootfs/etc/cilux/ws-token`
+- guest cwd: `/workspace`
+- approval policy: `never`
+- sandbox: `danger-full-access`
+
+### Full-screen TUI
+
+```sh
+python3 cilux/vm/scripts/tui-client.py
+```
+
+Inside the TUI:
+
+- type a prompt and press Enter to send a turn
+- `/new` starts a fresh thread
+- `/clear` clears the local transcript view
+- `/quit` exits
+
+The client shows:
+
+- streamed assistant text
+- MCP startup events
+- MCP tool start/completion events
+- shell command execution start/completion events
+- command output captured from the guest Codex session
+
+### One-shot prompt mode
+
+If you want a quick non-interactive check that the guest instance is reachable:
+
+```sh
+python3 cilux/vm/scripts/tui-client.py --prompt 'Run `whoami` and answer with only the exact output.'
+```
+
+This prints a plain transcript to stdout and is useful for smoke tests or
+simple scripting.
 
 ## Artifacts
 
