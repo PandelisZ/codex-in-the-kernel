@@ -124,7 +124,7 @@ app.innerHTML = `
       <div class="hero-layout">
         <div class="hero-copy">
           <a class="hero-kicker" href="${repoUrl}">codex-in-the-kernel</a>
-          <h1>Codex in the kernel without putting the agent in the kernel.</h1>
+          <h1>Codex in the kernel.</h1>
           <p class="hero-summary">
             Cilux is a disposable ARM64 VM harness exploring whether a local coding agent becomes meaningfully
             better at systems work when it can inspect live kernel state and use a narrow, explicit control plane.
