@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+if mountpoint -q /sys/kernel/debug; then
+  exit 0
+fi
+
+mkdir -p /sys/kernel/debug
+mount -t debugfs debugfs /sys/kernel/debug || true

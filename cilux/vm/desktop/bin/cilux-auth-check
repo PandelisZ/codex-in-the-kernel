@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+if [ -f /etc/cilux/desktop.env ]; then
+  # shellcheck disable=SC1091
+  . /etc/cilux/desktop.env
+fi
+
+if [ -s /etc/cilux/openai_api_key ]; then
+  exit 0
+fi
+
+if [ -f /root/.codex/auth.json ]; then
+  exit 0
+fi
+
+if [ -n "${DESKTOP_HOME:-}" ] && [ -f "$DESKTOP_HOME/.codex/auth.json" ]; then
+  exit 0
+fi
+
+exit 1

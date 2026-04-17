@@ -1,0 +1,12 @@
+[Unit]
+Description=UTM VirtioFS shared workspace
+After=local-fs.target
+
+[Mount]
+What=share
+Where=/mnt/utm-share
+Type=virtiofs
+Options=rw,nofail
+
+[Install]
+WantedBy=multi-user.target

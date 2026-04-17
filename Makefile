@@ -24,6 +24,7 @@ endef
 	fetch-deps \
 	fetch-alpine \
 	fetch-codex \
+	desktop-payload \
 	build \
 	build-guest \
 	build-kernel \
@@ -61,6 +62,9 @@ fetch-alpine: ## Download the Alpine minirootfs archive used for the guest initr
 
 fetch-codex: ## Download the guest Codex release tarball.
 	./$(SCRIPT_DIR)/fetch-codex.sh >/dev/null
+
+desktop-payload: preflight ## Assemble the Ubuntu desktop guest payload for the UTM-based VM path.
+	./$(SCRIPT_DIR)/build-desktop-payload.sh
 
 build: preflight build-guest build-kernel assemble-initramfs ## Build the guest binaries, kernel, and initramfs.
 

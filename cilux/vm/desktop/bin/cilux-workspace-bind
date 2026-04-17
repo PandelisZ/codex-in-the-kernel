@@ -1,0 +1,46 @@
+#!/bin/sh
+set -eu
+
+if [ -f /etc/cilux/desktop.env ]; then
+  # shellcheck disable=SC1091
+  . /etc/cilux/desktop.env
+fi
+
+SOURCE=${WORKSPACE_SOURCE:-/mnt/utm-share}
+TARGET=${WORKSPACE_TARGET:-/workspace}
+
+unmount_workspace() {
+  if mountpoint -q "$TARGET"; then
+    if command -v fusermount3 >/dev/null 2>&1; then
+      fusermount3 -u "$TARGET" || umount "$TARGET"
+    else
+      umount "$TARGET"
+    fi
+  fi
+}
+
+if [ "${1:-}" = "--unmount" ]; then
+  unmount_workspace
+  exit 0
+fi
+
+if [ -z "${DESKTOP_UID:-}" ] || [ -z "${DESKTOP_GID:-}" ]; then
+  echo "desktop UID/GID missing from /etc/cilux/desktop.env" >&2
+  exit 1
+fi
+
+if [ ! -d "$SOURCE" ]; then
+  echo "workspace source does not exist: $SOURCE" >&2
+  exit 1
+fi
+
+mkdir -p "$TARGET"
+
+if mountpoint -q "$TARGET"; then
+  exit 0
+fi
+
+HOST_UID=$(stat -c '%u' "$SOURCE")
+HOST_GID=$(stat -c '%g' "$SOURCE")
+
+bindfs -o "map=${HOST_UID}/${DESKTOP_UID}:@${HOST_GID}/@${DESKTOP_GID}" "$SOURCE" "$TARGET"

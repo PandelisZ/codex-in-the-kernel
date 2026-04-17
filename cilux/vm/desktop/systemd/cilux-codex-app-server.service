@@ -1,0 +1,14 @@
+[Unit]
+Description=Cilux Codex app-server
+After=network-online.target cilux-brokerd.service cilux-workspace.service
+Wants=network-online.target cilux-brokerd.service cilux-workspace.service
+
+[Service]
+Type=simple
+ExecCondition=/opt/cilux/bin/cilux-auth-check
+ExecStart=/opt/cilux/bin/cilux-start-codex-app-server
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

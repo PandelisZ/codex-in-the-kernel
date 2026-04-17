@@ -1,8 +1,8 @@
 use crate::netlink;
 use anyhow::{bail, Context, Result};
 use cilux_common::{
-    HealthReport, KernelEventsTail, KernelSnapshot, StatusResult, SystemReadResult,
-    SystemReadSelector, TraceCategory, TraceConfigureResult, TraceStatusResult,
+    BrokerCapabilities, GuestMode, HealthReport, KernelEventsTail, KernelSnapshot, StatusResult,
+    SystemReadResult, SystemReadSelector, TraceCategory, TraceConfigureResult, TraceStatusResult,
     DEFAULT_APP_SERVER_PORT, DEFAULT_DEBUGFS_ROOT, TRACE_DEFAULT_MASK,
 };
 use serde_json::Value;
@@ -96,17 +96,33 @@ impl KernelFacade {
     }
 
     pub fn health(&self, broker_pid: u32, socket_path: &Path) -> HealthReport {
-        let debugfs_ready =
-            self.caps_path().exists() && self.state_path().exists() && self.events_path().exists();
+        let kernel_snapshot_ready = self.caps_path().exists() && self.state_path().exists();
+        let kernel_events_ready = self.events_path().exists();
+        let debugfs_ready = kernel_snapshot_ready && kernel_events_ready;
         let netlink_ready = netlink::ping().is_ok();
+        let capabilities = BrokerCapabilities::from_kernel_surface(
+            kernel_snapshot_ready,
+            kernel_events_ready,
+            netlink_ready,
+        );
+        let guest_mode = if capabilities.kernel_snapshot
+            || capabilities.kernel_events_tail
+            || capabilities.trace_control
+        {
+            GuestMode::ResearchKernel
+        } else {
+            GuestMode::DesktopStockKernel
+        };
 
         HealthReport {
             broker_pid,
             socket_path: socket_path.display().to_string(),
             audit_log_path: self.audit_log_path.display().to_string(),
+            guest_mode,
             debugfs_ready,
             netlink_ready,
             app_server_port: DEFAULT_APP_SERVER_PORT,
+            capabilities,
         }
     }
 
@@ -233,7 +249,28 @@ impl Default for KernelFacade {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cilux_common::GuestMode;
     use cilux_common::{TRACE_EXEC, TRACE_EXIT, TRACE_MODULE, TRACE_OOM};
+    use std::fs;
+
+    #[test]
+    fn health_reports_desktop_mode_without_kernel_surface() {
+        let root = std::env::temp_dir().join(format!("cilux-kernel-health-{}", std::process::id()));
+        fs::remove_dir_all(&root).ok();
+        fs::create_dir_all(&root).expect("temp root should exist");
+
+        let kernel = KernelFacade::new(&root, root.join("audit.log"));
+        let health = kernel.health(7, Path::new("/run/cilux-broker.sock"));
+
+        assert_eq!(health.guest_mode, GuestMode::DesktopStockKernel);
+        assert_eq!(
+            health.capabilities,
+            BrokerCapabilities::desktop_stock_kernel()
+        );
+        assert!(!health.debugfs_ready);
+
+        fs::remove_dir_all(root).ok();
+    }
 
     #[test]
     fn trace_enable_disable_and_reset_default_mask_math() {

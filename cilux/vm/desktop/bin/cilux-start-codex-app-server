@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+export PATH=/opt/cilux/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+if [ -f /etc/cilux/desktop.env ]; then
+  # shellcheck disable=SC1091
+  . /etc/cilux/desktop.env
+fi
+
+mkdir -p /root/.codex
+install -m 0644 /etc/cilux/codex-config.toml /root/.codex/config.toml
+
+if [ ! -f /root/.codex/auth.json ] && [ -n "${DESKTOP_HOME:-}" ] && [ -f "$DESKTOP_HOME/.codex/auth.json" ]; then
+  install -m 0600 "$DESKTOP_HOME/.codex/auth.json" /root/.codex/auth.json
+fi
+
+if [ ! -s /etc/cilux/ws-token ]; then
+  umask 077
+  openssl rand -hex 32 > /etc/cilux/ws-token
+  chmod 0600 /etc/cilux/ws-token
+fi
+
+if [ -s /etc/cilux/openai_api_key ]; then
+  OPENAI_API_KEY=$(cat /etc/cilux/openai_api_key)
+  export OPENAI_API_KEY
+fi
+
+exec env HOME=/root CODEX_HOME=/root/.codex \
+  /opt/cilux/bin/codex app-server \
+    --listen ws://0.0.0.0:8765 \
+    --ws-auth capability-token \
+    --ws-token-file /etc/cilux/ws-token

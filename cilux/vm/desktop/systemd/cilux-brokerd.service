@@ -1,0 +1,17 @@
+[Unit]
+Description=Cilux broker daemon
+After=local-fs.target network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/cilux/desktop.env
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/cilux/desktop.env
+ExecStartPre=/opt/cilux/bin/cilux-prepare-debugfs
+ExecStart=/opt/cilux/bin/cilux-brokerd --socket /run/cilux-broker.sock --audit-log /var/log/cilux-broker.log --debugfs-root /sys/kernel/debug/cilux
+ExecStartPost=/bin/sh -lc 'chgrp "${DESKTOP_GID}" /run/cilux-broker.sock && chmod 0660 /run/cilux-broker.sock'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

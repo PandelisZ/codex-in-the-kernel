@@ -17,6 +17,25 @@ The current guest Codex session is intentionally configured for
 shell access and the curated kernel-facing MCP tools without interactive
 approval prompts.
 
+## VM Modes
+
+The harness now supports two parallel guest modes:
+
+- research kernel VM
+  - the existing QEMU/HVF guest with the custom ARM64 kernel, Alpine
+    initramfs, `rust_cilux.ko`, and the full Cilux MCP surface
+- Ubuntu desktop VM
+  - a stock Ubuntu 24.04.x Desktop ARM64 guest intended for UTM on the Apple
+    virtualization backend
+  - keeps the Cilux user-space stack, but only advertises the broker features
+    that are actually available on that guest
+  - `cilux_health` reports `guest_mode: desktop_stock_kernel` plus capability
+    flags, and the stock desktop MCP catalog is reduced to `cilux_health` and
+    `cilux_system_read`
+
+The research path remains the only mode with full trace/debugfs-backed Cilux
+coverage today.
+
 In the published repository, `linux/` and `codex/` are expected to be checked
 out as Git submodules at the repository root. Clone with
 `--recurse-submodules`, or run `git submodule update --init --recursive`
@@ -108,6 +127,9 @@ This lets the experiment compare two access styles in the same guest:
 
 - `vm/`
   - host-side build, fetch, assemble, and launch scripts
+  - `desktop/`
+    - Ubuntu-on-UTM guest bootstrap scripts, systemd units, and desktop Codex
+      config
 - `guest/`
   - static guest utilities:
     - `cilux-brokerd`
@@ -119,6 +141,10 @@ This lets the experiment compare two access styles in the same guest:
   - architecture and interface notes
 
 ## Current Guest Surface
+
+The full surface below applies to the research-kernel guest. The Ubuntu
+desktop guest dynamically hides trace/debugfs-backed tools and resources until
+the custom kernel surface is present.
 
 ### Full-access shell
 
@@ -195,6 +221,54 @@ The current Cilux MCP server exposes:
 
 - `cilux://events/{limit}`
 - `cilux://system/{selector}`
+
+## Ubuntu Desktop On UTM
+
+The desktop path keeps the existing headless research harness intact and adds a
+separate stock-Ubuntu guest flow for UTM.
+
+### Build the payload on the host
+
+```sh
+make desktop-payload
+```
+
+That stages:
+
+- `cilux/artifacts/desktop-payload/`
+- `cilux/artifacts/desktop-payload.tar.gz`
+
+### Install into the guest
+
+Create an Ubuntu 24.04.x Desktop ARM64 VM in UTM using the Apple
+virtualization backend, enable a VirtioFS share tagged `share`, then mount the
+shared repo once:
+
+```sh
+sudo mkdir -p /mnt/utm-share
+sudo mount -t virtiofs share /mnt/utm-share
+```
+
+Install the staged payload from the shared repo:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/install.sh
+```
+
+The installer:
+
+- targets the first non-system desktop user by default
+- accepts `--user USER` or `CILUX_DESKTOP_USER=...`
+- installs `bindfs`, `spice-vdagent`, and the staged payload
+- installs binaries under `/opt/cilux/bin`
+- writes config under `/etc/cilux`
+- enables the UTM share mount, workspace remap, broker, and app-server units
+
+Run the guest smoke check afterward:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/smoke.sh
+```
 
 ### Guest skill
 

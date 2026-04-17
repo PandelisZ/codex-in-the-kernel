@@ -1,0 +1,15 @@
+[Unit]
+Description=Cilux workspace bindfs remap
+Requires=mnt-utm\x2dshare.mount
+After=mnt-utm\x2dshare.mount
+ConditionPathExists=/etc/cilux/desktop.env
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/cilux/desktop.env
+ExecStart=/opt/cilux/bin/cilux-workspace-bind
+ExecStop=/opt/cilux/bin/cilux-workspace-bind --unmount
+
+[Install]
+WantedBy=multi-user.target

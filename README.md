@@ -55,6 +55,26 @@ The current guest Codex session is intentionally configured for
 shell access and the curated kernel-facing MCP tools without interactive
 approval prompts.
 
+## VM Modes
+
+The repository now supports two parallel guest modes:
+
+- research kernel VM
+  - the existing QEMU/HVF path with the custom ARM64 kernel, Alpine
+    initramfs, `rust_cilux.ko`, and the full trace/debugfs-backed Cilux MCP
+    surface
+- Ubuntu desktop VM
+  - a stock Ubuntu 24.04.x Desktop ARM64 guest intended for UTM on the Apple
+    virtualization backend
+  - keeps Codex, `cilux-brokerd`, `cilux-mcp`, and `ciluxctl`, but on a stock
+    kernel it only advertises the broker surfaces that actually exist
+  - `cilux_health` reports `guest_mode: desktop_stock_kernel` plus per-feature
+    capability flags, and the MCP catalog is reduced to `cilux_health` and
+    `cilux_system_read`
+
+The research path remains the only mode that exposes the full Cilux
+kernel-trace surface today.
+
 ## Research Goal
 
 The core question behind this project is:
@@ -141,6 +161,9 @@ This lets the experiment compare two access styles in the same guest:
 
 - `cilux/vm/`
   - host-side build, fetch, assemble, and launch scripts
+  - `desktop/`
+    - Ubuntu-on-UTM guest bootstrap scripts, systemd units, and desktop Codex
+      config
 - `cilux/guest/`
   - static guest utilities:
     - `cilux-brokerd`
@@ -152,6 +175,10 @@ This lets the experiment compare two access styles in the same guest:
   - architecture and interface notes
 
 ## Current Guest Surface
+
+The full tool/resource list below applies to the research-kernel guest. The
+Ubuntu desktop guest dynamically hides trace/debugfs-backed tools and
+resources until the custom Cilux kernel surface is present.
 
 ### Full-access shell
 
@@ -212,6 +239,94 @@ The current Cilux MCP server exposes:
 
 - `cilux://events/{limit}`
 - `cilux://system/{selector}`
+
+## Ubuntu Desktop On UTM
+
+The desktop path is intentionally separate from the headless QEMU harness. It
+does not automate the Ubuntu installer; instead it stages a reproducible guest
+payload from the repo and converges the installed desktop VM afterward.
+
+### Host-side payload
+
+Build the Ubuntu desktop payload on the host:
+
+```sh
+make desktop-payload
+```
+
+That target stages:
+
+- `cilux/artifacts/desktop-payload/`
+- `cilux/artifacts/desktop-payload.tar.gz`
+
+The payload contains:
+
+- `cilux-brokerd`
+- `cilux-mcp`
+- `ciluxctl`
+- `codex`
+- the desktop Codex config
+- guest helper scripts
+- systemd units for the UTM share, workspace bindfs remap, broker, and app
+  server
+
+### UTM guest setup
+
+Create an Ubuntu 24.04.x Desktop ARM64 VM in UTM using the Apple
+virtualization backend and enable:
+
+- UEFI boot
+- shared networking
+- keyboard and pointer
+- sound
+- clipboard sharing
+- a VirtioFS shared directory tagged `share`
+
+After Ubuntu is installed and booted, mount the shared repo once:
+
+```sh
+sudo mkdir -p /mnt/utm-share
+sudo mount -t virtiofs share /mnt/utm-share
+```
+
+Then install the staged payload:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/install.sh
+```
+
+The installer:
+
+- targets the first non-system desktop user by default
+- accepts `--user USER` or `CILUX_DESKTOP_USER=...` to override that choice
+- installs `bindfs`, `spice-vdagent`, and the staged payload
+- writes guest config under `/etc/cilux`
+- installs binaries under `/opt/cilux/bin`
+- mounts the UTM VirtioFS share at `/mnt/utm-share`
+- remaps the shared repo to `/workspace`
+- enables `cilux-brokerd.service`, `cilux-workspace.service`, and
+  `cilux-codex-app-server.service`
+
+The app-server unit is gated on guest auth material. If neither
+`/root/.codex/auth.json`, the selected desktop user's `~/.codex/auth.json`, nor
+`/etc/cilux/openai_api_key` exists, the service stays enabled for future boots
+but does not start.
+
+### Desktop smoke test
+
+Run the guest-side smoke check after install:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/smoke.sh
+```
+
+It verifies:
+
+- the VirtioFS share and `/workspace` remap are mounted
+- `cilux-brokerd` is active
+- `cilux_health` reports stock-kernel desktop mode
+- `cilux_system_read` works
+- the Codex app-server is active when guest auth exists
 
 ### Guest skill
 

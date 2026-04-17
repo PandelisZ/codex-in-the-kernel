@@ -27,15 +27,18 @@ pub(crate) fn serve(socket: &Path, mut stdin: impl BufRead, mut stdout: impl Wri
             .and_then(Value::as_str)
             .unwrap_or_default();
         let params = message.get("params").cloned().unwrap_or_else(|| json!({}));
+        let capabilities = catalog::CatalogCapabilities::detect(socket);
 
         let response = match method {
             "initialize" => initialize_response(id, &params),
             "ping" => success(id, json!({})),
-            "tools/list" => success(id, catalog::list_tools()),
+            "tools/list" => success(id, catalog::list_tools(&capabilities)),
             "tools/call" => tools::tool_call_response(socket, id, &params),
-            "resources/list" => success(id, catalog::list_resources()),
+            "resources/list" => success(id, catalog::list_resources(&capabilities)),
             "resources/read" => resources::resource_read_response(socket, id, &params),
-            "resources/templates/list" => success(id, catalog::list_resource_templates()),
+            "resources/templates/list" => {
+                success(id, catalog::list_resource_templates(&capabilities))
+            }
             _ => error(id, -32601, format!("method not found: {method}")),
         };
 

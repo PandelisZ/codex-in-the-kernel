@@ -395,9 +395,59 @@ pub struct HealthReport {
     pub broker_pid: u32,
     pub socket_path: String,
     pub audit_log_path: String,
+    pub guest_mode: GuestMode,
     pub debugfs_ready: bool,
     pub netlink_ready: bool,
     pub app_server_port: u16,
+    pub capabilities: BrokerCapabilities,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GuestMode {
+    ResearchKernel,
+    DesktopStockKernel,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BrokerCapabilities {
+    pub kernel_snapshot: bool,
+    pub kernel_events_tail: bool,
+    pub trace_control: bool,
+    pub system_read: bool,
+}
+
+impl BrokerCapabilities {
+    pub fn full() -> Self {
+        Self {
+            kernel_snapshot: true,
+            kernel_events_tail: true,
+            trace_control: true,
+            system_read: true,
+        }
+    }
+
+    pub fn desktop_stock_kernel() -> Self {
+        Self {
+            kernel_snapshot: false,
+            kernel_events_tail: false,
+            trace_control: false,
+            system_read: true,
+        }
+    }
+
+    pub fn from_kernel_surface(
+        kernel_snapshot: bool,
+        kernel_events_tail: bool,
+        trace_control: bool,
+    ) -> Self {
+        Self {
+            kernel_snapshot,
+            kernel_events_tail,
+            trace_control,
+            system_read: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

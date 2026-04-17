@@ -29,6 +29,24 @@ pub(crate) fn resource_read_response(socket: &Path, id: Value, params: &Value) -
 }
 
 fn read_resource(socket: &Path, uri: &str) -> Result<(String, &'static str)> {
+    let capabilities = catalog::CatalogCapabilities::detect(socket);
+    let known_resource = matches!(
+        uri,
+        "cilux://caps" | "cilux://state" | "cilux://events" | "cilux://health"
+    ) || uri.starts_with("cilux://events/")
+        || uri.starts_with("cilux://system/");
+    if uri.is_empty() {
+        return Err(anyhow!("missing resource URI"));
+    }
+    if !known_resource {
+        return Err(anyhow!("unknown resource `{uri}`"));
+    }
+    if !capabilities.supports_resource(uri) {
+        return Err(anyhow!(
+            "resource `{uri}` is unavailable in the current guest mode"
+        ));
+    }
+
     match uri {
         "cilux://caps" => snapshot_projection(socket, |snapshot| pretty_json(&snapshot.caps)),
         "cilux://state" => snapshot_projection(socket, |snapshot| pretty_json(&snapshot.state)),
@@ -125,12 +143,30 @@ mod tests {
     use std::fs;
     use std::io::{BufRead, BufReader, Write};
     use std::os::unix::net::UnixListener;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    static NEXT_SOCKET_ID: AtomicU64 = AtomicU64::new(0);
 
     #[test]
     fn resource_uri_resolution_handles_new_explicit_and_template_uris() {
         let (socket, handle) = spawn_fake_broker(vec![
+            (
+                BrokerRequest::Health(HealthRequest::default()),
+                BrokerResponse::Ok {
+                    result: BrokerResult::Health(cilux_common::HealthReport {
+                        broker_pid: 7,
+                        socket_path: "/run/cilux-broker.sock".to_string(),
+                        audit_log_path: "/var/log/cilux-broker.log".to_string(),
+                        guest_mode: cilux_common::GuestMode::ResearchKernel,
+                        debugfs_ready: true,
+                        netlink_ready: true,
+                        app_server_port: 8765,
+                        capabilities: cilux_common::BrokerCapabilities::full(),
+                    }),
+                },
+            ),
             (
                 BrokerRequest::SystemRead(SystemReadRequest {
                     selector: SystemReadSelector::ProcSoftirqs,
@@ -139,6 +175,21 @@ mod tests {
                     result: BrokerResult::SystemRead(SystemReadResult {
                         selector: SystemReadSelector::ProcSoftirqs,
                         text: "softirq snapshot".to_string(),
+                    }),
+                },
+            ),
+            (
+                BrokerRequest::Health(HealthRequest::default()),
+                BrokerResponse::Ok {
+                    result: BrokerResult::Health(cilux_common::HealthReport {
+                        broker_pid: 7,
+                        socket_path: "/run/cilux-broker.sock".to_string(),
+                        audit_log_path: "/var/log/cilux-broker.log".to_string(),
+                        guest_mode: cilux_common::GuestMode::ResearchKernel,
+                        debugfs_ready: true,
+                        netlink_ready: true,
+                        app_server_port: 8765,
+                        capabilities: cilux_common::BrokerCapabilities::full(),
                     }),
                 },
             ),
@@ -187,12 +238,44 @@ mod tests {
         fs::remove_file(socket).ok();
     }
 
+    #[test]
+    fn desktop_mode_rejects_snapshot_resources() {
+        let (socket, handle) = spawn_fake_broker(vec![(
+            BrokerRequest::Health(HealthRequest::default()),
+            BrokerResponse::Ok {
+                result: BrokerResult::Health(cilux_common::HealthReport {
+                    broker_pid: 5,
+                    socket_path: "/run/cilux-broker.sock".to_string(),
+                    audit_log_path: "/var/log/cilux-broker.log".to_string(),
+                    guest_mode: cilux_common::GuestMode::DesktopStockKernel,
+                    debugfs_ready: false,
+                    netlink_ready: false,
+                    app_server_port: 8765,
+                    capabilities: cilux_common::BrokerCapabilities::desktop_stock_kernel(),
+                }),
+            },
+        )]);
+
+        let response = resource_read_response(&socket, json!(9), &json!({ "uri": "cilux://caps" }));
+
+        assert_eq!(
+            response.pointer("/error/message"),
+            Some(&json!(
+                "resource `cilux://caps` is unavailable in the current guest mode"
+            ))
+        );
+
+        handle.join().expect("fake broker should exit cleanly");
+        fs::remove_file(socket).ok();
+    }
+
     fn spawn_fake_broker(
         script: Vec<(BrokerRequest, BrokerResponse)>,
     ) -> (std::path::PathBuf, thread::JoinHandle<()>) {
         let socket = std::env::temp_dir().join(format!(
-            "cilux-mcp-resources-{}-{}.sock",
+            "cilux-mcp-resources-{}-{}-{}.sock",
             std::process::id(),
+            NEXT_SOCKET_ID.fetch_add(1, Ordering::Relaxed),
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("time should be monotonic enough")
