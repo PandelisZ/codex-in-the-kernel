@@ -25,6 +25,7 @@ endef
 	fetch-alpine \
 	fetch-codex \
 	desktop-payload \
+	desktop-ready \
 	build \
 	build-guest \
 	build-kernel \
@@ -65,6 +66,9 @@ fetch-codex: ## Download the guest Codex release tarball.
 
 desktop-payload: preflight ## Assemble the Ubuntu desktop guest payload for the UTM-based VM path.
 	./$(SCRIPT_DIR)/build-desktop-payload.sh
+
+desktop-ready: desktop-payload ## Build the desktop payload and print the in-guest one-shot bootstrap command.
+	@printf "Guest command:\n  sudo /mnt/utm-share/cilux/vm/desktop/one-shot.sh\n"
 
 build: preflight build-guest build-kernel assemble-initramfs ## Build the guest binaries, kernel, and initramfs.
 

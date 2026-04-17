@@ -255,6 +255,12 @@ Install the staged payload from the shared repo:
 sudo /mnt/utm-share/cilux/vm/desktop/install.sh
 ```
 
+Or use the single guest-side bootstrap wrapper:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/one-shot.sh
+```
+
 The installer:
 
 - targets the first non-system desktop user by default
@@ -263,6 +269,18 @@ The installer:
 - installs binaries under `/opt/cilux/bin`
 - writes config under `/etc/cilux`
 - enables the UTM share mount, workspace remap, broker, and app-server units
+
+The shortest host+guest sequence is:
+
+```sh
+make desktop-ready
+```
+
+Then inside Ubuntu:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/one-shot.sh
+```
 
 Run the guest smoke check afterward:
 

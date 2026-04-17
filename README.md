@@ -295,6 +295,12 @@ Then install the staged payload:
 sudo /mnt/utm-share/cilux/vm/desktop/install.sh
 ```
 
+Or use the single guest-side bootstrap command:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/one-shot.sh
+```
+
 The installer:
 
 - targets the first non-system desktop user by default
@@ -306,6 +312,18 @@ The installer:
 - remaps the shared repo to `/workspace`
 - enables `cilux-brokerd.service`, `cilux-workspace.service`, and
   `cilux-codex-app-server.service`
+
+If you want the shortest host+guest sequence, use:
+
+```sh
+make desktop-ready
+```
+
+Then, inside the Ubuntu guest:
+
+```sh
+sudo /mnt/utm-share/cilux/vm/desktop/one-shot.sh
+```
 
 The app-server unit is gated on guest auth material. If neither
 `/root/.codex/auth.json`, the selected desktop user's `~/.codex/auth.json`, nor
