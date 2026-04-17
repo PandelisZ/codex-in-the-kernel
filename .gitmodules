@@ -1,0 +1,8 @@
+[submodule "codex"]
+	path = codex
+	url = https://github.com/openai/codex.git
+	branch = main
+[submodule "linux"]
+	path = linux
+	url = https://github.com/PandelisZ/linux.git
+	branch = cilux

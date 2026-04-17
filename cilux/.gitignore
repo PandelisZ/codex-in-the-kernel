@@ -1,0 +1,5 @@
+artifacts/
+run/
+guest/target/
+tests/.venv/
+tests/__pycache__/

@@ -1,0 +1,21 @@
+[workspace]
+members = [
+    "crates/cilux-common",
+    "crates/cilux-brokerd",
+    "crates/cilux-mcp",
+    "crates/ciluxctl",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+libc = "0.2"
+neli = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
